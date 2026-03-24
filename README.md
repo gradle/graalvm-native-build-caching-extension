@@ -65,7 +65,7 @@ This extension makes the `build` goal of the [Quarkus Maven Plugin](https://quar
 Although unrelated to caching, You may consider configuring additional test inputs as described in the [Quarkus Test goals](#quarkus-test-goals) section.
 
 #### Requirements
-Quarkus 3.31 and above which enables Native Image Bundle generation.
+Quarkus 3.32 and above which enables Native Image Bundle generation.
 
 #### Configuration
 An additional execution of the `build` goal has to be configured

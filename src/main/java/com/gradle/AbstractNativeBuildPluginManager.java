@@ -13,9 +13,20 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
@@ -34,6 +45,9 @@ public abstract class AbstractNativeBuildPluginManager {
     private static final AbstractNormalizer jsonNormalizer = new JsonNormalizer();
     private static final AbstractNormalizer propertiesNormalizer = new PropertiesNormalizer();
 
+    // Tracks mojo executions that have already been processed to avoid duplicate bundle extraction and logging
+    private final Map<String, Boolean> processedExecutions = Collections.synchronizedMap(new HashMap<>());
+
     protected abstract String getPluginName();
 
     protected abstract List<String> getCacheableGoals();
@@ -49,73 +63,84 @@ public abstract class AbstractNativeBuildPluginManager {
     protected void configureBuildCache(BuildCacheApi buildCache, MojoMetadataProvider.Context context) {
         AbstractNativeBuildCachingConfiguration configuration = getConfiguration(context.getProject(), context.getSession().getLocalRepository().getBasedir());
 
-        context.withPlugin(getPluginName(), () -> {
-            configureNativeBuildCaching(context, configuration);
-        });
+        if (configuration.isNativeBuildCachingEnabled()) {
+            context.withPlugin(getPluginName(), () -> {
+                configureNativeBuildCaching(context, configuration);
+            });
 
-        configureExtraPlugins(context, configuration);
+            configureExtraPlugins(context, configuration);
+        } else {
+            LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Native build caching is disabled"));
+        }
     }
 
     private void configureNativeBuildCaching(MojoMetadataProvider.Context context, AbstractNativeBuildCachingConfiguration configuration) {
         if (getCacheableGoals().contains(context.getMojoExecution().getGoal())) {
-            LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage(configuration.toString()));
-            if (configuration.isNativeBuildCachingEnabled()) {
-                LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Native build caching is enabled"));
+            String executionId = context.getMojoExecution().getExecutionId();
+            boolean bundleFound = processedExecutions.computeIfAbsent(executionId, key -> {
+                LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage(configuration.toString()));
+                return extractAndTransformBundle(configuration);
+            });
 
-                String targetDir = context.getProject().getBuild().getDirectory();
-
-                AtomicBoolean isBundleFound = new AtomicBoolean(false);
-                try (Stream<Path> walkStream = Files.walk(Paths.get(targetDir))) {
-                    walkStream.filter(p -> p.toFile().isFile()).forEach(f -> {
-                        if (f.toString().endsWith(configuration.getBundleFile())) {
-                            LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Found native image bundle"));
-                            isBundleFound.set(true);
-
-                            try (FileSystem zipFs = FileSystems.newFileSystem(f, (ClassLoader) null)) {
-                                if (zipFs != null) {
-                                    for (Path rootDir : zipFs.getRootDirectories()) {
-                                        Files.walkFileTree(rootDir, new SimpleFileVisitor<Path>() {
-                                            @Override
-                                            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                                                Path relativePath = rootDir.relativize(file);
-                                                for (String nativeImageBundleDir : NATIVE_IMAGE_BUNDLE_DIRS_TO_COPY) {
-                                                    if (file.startsWith(nativeImageBundleDir)) {
-                                                        Path targetPath = Paths.get(configuration.getWorkDir()).resolve(relativePath.toString());
-                                                        Files.createDirectories(targetPath.getParent());
-                                                        Files.copy(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
-                                                        LOGGER.trace(AbstractNativeBuildCachingConfiguration.getLogMessage("Extracted file " + file));
-                                                    }
-                                                }
-                                                return FileVisitResult.CONTINUE;
-                                            }
-                                        });
-                                    }
-
-                                    transformNativeImageBundleInputs(configuration.getWorkDir());
-                                    configureInputs(context, configuration);
-                                    configureOutputs(context, configuration);
-                                    LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Native build cache configured"));
-                                } else {
-                                    LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Native image bundle is empty"));
-                                }
-                            } catch (IOException e) {
-                                LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage(e.toString()));
-                                throw new RuntimeException(e);
-                            }
-                        }
-                    });
-                } catch (IOException e) {
-                    LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage(e.toString()));
-                    throw new RuntimeException(e);
-                }
-
-                if (!isBundleFound.get()) {
-                    LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Native image bundle not found"));
-                }
-            } else {
-                LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Native build caching is disabled"));
+            // Configure inputs/outputs when a bundle is found (required on every invocation by the Develocity API)
+            if (bundleFound) {
+                configureInputs(context, configuration);
+                configureOutputs(context, configuration);
             }
         }
+    }
+
+    private boolean extractAndTransformBundle(AbstractNativeBuildCachingConfiguration configuration) {
+        String targetDir = configuration.getBuildDir();
+
+        AtomicBoolean isBundleFound = new AtomicBoolean(false);
+        try (Stream<Path> walkStream = Files.walk(Paths.get(targetDir))) {
+            walkStream.filter(p -> p.toFile().isFile()).forEach(f -> {
+                if (f.toString().endsWith(configuration.getBundleFile())) {
+                    LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Found native image bundle"));
+                    isBundleFound.set(true);
+
+                    try (FileSystem zipFs = FileSystems.newFileSystem(f, (ClassLoader) null)) {
+                        if (zipFs != null) {
+                            for (Path rootDir : zipFs.getRootDirectories()) {
+                                Files.walkFileTree(rootDir, new SimpleFileVisitor<Path>() {
+                                    @Override
+                                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                                        Path relativePath = rootDir.relativize(file);
+                                        for (String nativeImageBundleDir : NATIVE_IMAGE_BUNDLE_DIRS_TO_COPY) {
+                                            if (file.startsWith(nativeImageBundleDir)) {
+                                                Path targetPath = Paths.get(configuration.getWorkDir()).resolve(relativePath.toString());
+                                                Files.createDirectories(targetPath.getParent());
+                                                Files.copy(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                                                LOGGER.trace(AbstractNativeBuildCachingConfiguration.getLogMessage("Extracted file " + file));
+                                            }
+                                        }
+                                        return FileVisitResult.CONTINUE;
+                                    }
+                                });
+                            }
+
+                            transformNativeImageBundleInputs(configuration.getWorkDir());
+                            LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Native build cache configured"));
+                        } else {
+                            LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Native image bundle is empty"));
+                        }
+                    } catch (IOException e) {
+                        LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage(e.toString()));
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+        } catch (IOException e) {
+            LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage(e.toString()));
+            throw new RuntimeException(e);
+        }
+
+        if (!isBundleFound.get()) {
+            LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Native image bundle not found"));
+        }
+
+        return isBundleFound.get();
     }
 
     private void transformNativeImageBundleInputs(String nativeImageBundleDir) {

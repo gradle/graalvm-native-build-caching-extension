@@ -9,8 +9,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.file.*;
-import java.util.*;
+import java.nio.file.Files;
+import java.util.List;
 
 /**
  * Caching instructions for the test goals.
@@ -24,7 +24,6 @@ final class TestPluginManager {
 
     void configureQuarkusExtraTestInputs(MojoMetadataProvider.Context context, AbstractNativeBuildCachingConfiguration configuration) {
         QuarkusTestConfiguration testConfiguration = new QuarkusTestConfiguration(context, configuration);
-        LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage(testConfiguration.toString()));
         if (testConfiguration.isAddQuarkusInputs()) {
             LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Adding Quarkus extra test inputs"));
             context.inputs(inputs -> addQuarkusDependenciesInputs(inputs, ((QuarkusBuildCachingConfiguration) configuration).getDependencyFileName()));

@@ -10,8 +10,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.file.*;
-import java.util.*;
+import java.nio.file.Files;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Caching instructions for the Quarkus build goal.
@@ -71,8 +72,6 @@ public final class QuarkusPluginManager extends AbstractNativeBuildPluginManager
             } catch (IOException e) {
                 LOGGER.error(AbstractNativeBuildCachingConfiguration.getLogMessage("Error while loading " + quarkusDependencyFile), e);
             }
-        } else {
-            LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage(quarkusDependencyFile + " not found"));
         }
     }
 
@@ -84,9 +83,6 @@ public final class QuarkusPluginManager extends AbstractNativeBuildPluginManager
         String quarkusUberJarFileName = quarkusFinalName + "-runner.jar";
         String quarkusFastJarDirectoryName = configuration.getBuildDir()  + "quarkus-app";
         String quarkusArtifactProperties = configuration.getBuildDir()  + QUARKUS_ARTIFACT_PROPERTIES_FILE_NAME;
-
-        LOGGER.info(AbstractNativeBuildCachingConfiguration.getLogMessage("Caching " + quarkusJarFileName));
-        LOGGER.info(AbstractNativeBuildCachingConfiguration.getLogMessage("Caching " + quarkusExeFileName));
 
         outputs.cacheable("this plugin has CPU-bound goals with well-defined inputs and outputs");
         outputs.file("quarkusExe", quarkusExeFileName);
