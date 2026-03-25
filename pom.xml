@@ -4,24 +4,56 @@
 
     <groupId>com.gradle</groupId>
     <artifactId>graalvm-native-build-caching-extension</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
+
+    <name>${project.groupId}:${project.artifactId}</name>
+    <description>Maven extension to make the GraalVM native compilation goal cacheable</description>
+    <url>https://github.com/gradle/graalvm-native-build-caching-extension</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <scm>
+        <url>https://github.com/gradle/graalvm-native-build-caching-extension</url>
+        <connection>scm:git:https://github.com/gradle/graalvm-native-build-caching-extension.git</connection>
+        <developerConnection>scm:git:https://github.com/gradle/graalvm-native-build-caching-extension.git</developerConnection>
+    </scm>
+
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <distributionManagement>
+        <site>
+            <id>Documentation</id>
+            <url>https://github.com/gradle/graalvm-native-build-caching-extension</url>
+        </site>
+    </distributionManagement>
+
+    <developers>
+        <developer>
+            <name>The Gradle team</name>
+            <organization>Gradle Inc.</organization>
+            <organizationUrl>https://gradle.com</organizationUrl>
+        </developer>
+    </developers>
+
     <dependencies>
         <dependency>
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-core</artifactId>
-            <version>3.9.11</version>
+            <version>3.9.13</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.gradle</groupId>
             <artifactId>develocity-maven-extension</artifactId>
-            <version>2.2.1</version>
+            <version>2.3.4</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
@@ -31,7 +63,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.1</version>
+                <version>3.15.0</version>
                 <configuration>
                     <source>1.8</source>
                     <target>1.8</target>
@@ -39,7 +71,7 @@
                         <path>
                             <groupId>org.eclipse.sisu</groupId>
                             <artifactId>org.eclipse.sisu.inject</artifactId>
-                            <version>0.3.5</version>
+                            <version>1.0.0</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
@@ -47,7 +79,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.6.1</version>
+                <version>3.6.2</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -106,7 +138,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-release-plugin</artifactId>
-                        <version>3.2.0</version>
+                        <version>3.3.1</version>
                         <configuration>
                             <arguments>-Dscan=false</arguments>
                         </configuration>
@@ -123,7 +155,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-source-plugin</artifactId>
-                        <version>3.3.1</version>
+                        <version>3.4.0</version>
                         <executions>
                             <execution>
                                 <id>attach-sources</id>
@@ -177,7 +209,7 @@
                     <plugin>
                         <groupId>org.sonatype.central</groupId>
                         <artifactId>central-publishing-maven-plugin</artifactId>
-                        <version>0.9.0</version>
+                        <version>0.10.0</version>
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>ossrh</publishingServerId>
