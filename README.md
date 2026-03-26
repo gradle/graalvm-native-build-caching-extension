@@ -52,7 +52,7 @@ Reference the extension in `.mvn/extensions.xml` (this extension requires the de
     <extension>
         <groupId>com.gradle</groupId>
         <artifactId>graalvm-native-build-caching-extension</artifactId>
-        <version>1.0</version>
+        <version>0.1</version>
     </extension>
 </extensions>
 ```
@@ -221,9 +221,9 @@ Some additional outputs can be configured if necessary (when using the [quarkus-
 ```xml
 <properties>
     <!-- Optional declaration of extra output dir -->
-    <develocity.quarkus.extra.output.dirs>helm</develocity.quarkus.extra.output.dirs>
+    <develocity.native.extra.output.dirs>helm</develocity.native.extra.output.dirs>
     <!-- Optional declaration of extra output files -->
-    <develocity.quarkus.extra.output.files>helm/kubernetes/${project.artifactId}/Chart.yaml,helm/kubernetes/${project.artifactId}/values.yaml</develocity.quarkus.extra.output.files>
+    <develocity.native.extra.output.files>helm/kubernetes/${project.artifactId}/Chart.yaml,helm/kubernetes/${project.artifactId}/values.yaml</develocity.native.extra.output.files>
 </properties>
 ```
 
