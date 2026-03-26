@@ -3,7 +3,7 @@
 
     <groupId>com.gradle</groupId>
     <artifactId>graalvm-native-build-caching-extension</artifactId>
-    <version>0.1</version>
+    <version>0.2-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>${project.groupId}:${project.artifactId}</name>
@@ -18,7 +18,7 @@
         <url>https://github.com/gradle/graalvm-native-build-caching-extension</url>
         <connection>scm:git:https://github.com/gradle/graalvm-native-build-caching-extension.git</connection>
         <developerConnection>scm:git:https://github.com/gradle/graalvm-native-build-caching-extension.git</developerConnection>
-      <tag>v0.1</tag>
+      <tag>HEAD</tag>
   </scm>
 
     <licenses>
