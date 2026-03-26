@@ -15,6 +15,8 @@ The native GraalVM compilation can be performed through different Maven plugins:
 
 This project performs programmatic configuration of the [Develocity Build Cache](https://docs.gradle.com/develocity/maven-extension/current/#using_the_build_cache) through a Maven extension. See [here](https://docs.gradle.com/develocity/maven-extension/current/#custom_extension) for more details.
 
+See the [Release notes](release/changes.md)
+
 # Impact and benefits
 The native compilation can be a long operation (several minutes) depending on the project size, build strategy and the target platform. This is why making it cacheable can bring significant build time improvement.
 The native compilation is usually the last step of the build, it means that most changes will impact it and prevent cache hits. However, there are still some scenarios where a cache hit can occur (re-run build, documentation change, static resources change, ABI-compatible dependency change...).
