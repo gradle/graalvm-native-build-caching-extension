@@ -76,7 +76,16 @@ public final class QuarkusPluginManager extends AbstractNativeBuildPluginManager
     }
 
     @Override
-    protected void configureMojoOutputs(MojoMetadataProvider.Context.Outputs outputs,  AbstractNativeBuildCachingConfiguration configuration) {
+    protected void configurePrepareCacheOutputs(MojoMetadataProvider.Context.Outputs outputs, AbstractNativeBuildCachingConfiguration configuration) {
+        String bundleFile = configuration.getBuildDir() + configuration.getBundleFile();
+        String sourceJarDir = configuration.getBuildDir() + ((QuarkusBuildCachingConfiguration) configuration).getFinalName() + "-native-image-source-jar";
+
+        outputs.file("nativeImageBundle", bundleFile);
+        outputs.directory("nativeImageSourceJar", sourceJarDir);
+    }
+
+    @Override
+    protected void configureCompileOutputs(MojoMetadataProvider.Context.Outputs outputs,  AbstractNativeBuildCachingConfiguration configuration) {
         String quarkusFinalName = configuration.getBuildDir() + ((QuarkusBuildCachingConfiguration) configuration).getFinalName();
         String quarkusExeFileName = quarkusFinalName + "-runner";
         String quarkusJarFileName = quarkusFinalName + ".jar";

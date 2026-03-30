@@ -45,7 +45,13 @@ public final class GraalVMPluginManager extends AbstractNativeBuildPluginManager
     }
 
     @Override
-    protected void configureMojoOutputs(MojoMetadataProvider.Context.Outputs outputs, AbstractNativeBuildCachingConfiguration configuration) {
+    protected void configurePrepareCacheOutputs(MojoMetadataProvider.Context.Outputs outputs, AbstractNativeBuildCachingConfiguration configuration) {
+        String bundleFile = configuration.getBuildDir() + configuration.getBundleFile();
+        outputs.file("nativeImageBundle", bundleFile);
+    }
+
+    @Override
+    protected void configureCompileOutputs(MojoMetadataProvider.Context.Outputs outputs, AbstractNativeBuildCachingConfiguration configuration) {
         String graalVMExeFileName = configuration.getBuildDir() + ((GraalVMBuildCachingConfiguration) configuration).getGraalVMNativeBinaryName();
         String graalVMJarFileName = configuration.getBuildDir() + ((GraalVMBuildCachingConfiguration) configuration).getGraalVMNativeBinaryName() + ".jar";
 

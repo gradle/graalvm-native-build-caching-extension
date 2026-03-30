@@ -29,6 +29,9 @@ public abstract class AbstractNativeBuildCachingConfiguration {
     // Feature toggle key
     private static final String DEVELOCITY_NATIVE_KEY_CACHE_ENABLED = "DEVELOCITY_NATIVE_CACHE_ENABLED";
 
+    // Fast mode to cache the prepare cache execution
+    private static final String DEVELOCITY_NATIVE_KEY_CACHE_FAST_MODE_ENABLED = "DEVELOCITY_NATIVE_CACHE_FAST_MODE_ENABLED";
+
     // Configuration file location key
     private static final String DEVELOCITY_NATIVE_KEY_CONFIG_FILE = "DEVELOCITY_NATIVE_CONFIG_FILE";
 
@@ -71,6 +74,7 @@ public abstract class AbstractNativeBuildCachingConfiguration {
         configuration.setProperty(DEVELOCITY_NATIVE_KEY_MAVEN_LOCAL_REPO_DIR, localMavenRepoDir);
         configuration.setProperty(DEVELOCITY_NATIVE_KEY_BUNDLE_FILE, DEVELOCITY_NATIVE_DEFAULT_NIB);
         configuration.setProperty(DEVELOCITY_NATIVE_KEY_CONFIG_FILE, "");
+        configuration.setProperty(DEVELOCITY_NATIVE_KEY_CACHE_FAST_MODE_ENABLED, Boolean.FALSE.toString());
         configuration.setProperty(DEVELOCITY_NATIVE_KEY_EXTRA_OUTPUT_DIRS, "");
         configuration.setProperty(DEVELOCITY_NATIVE_KEY_EXTRA_OUTPUT_FILES, "");
     }
@@ -86,9 +90,12 @@ public abstract class AbstractNativeBuildCachingConfiguration {
 
     private void overrideFromMaven(MavenProject project) {
         configuration.stringPropertyNames().forEach((key) -> {
-            String mavenProperty = project.getProperties().getProperty(
-                    key.toLowerCase().replace("_", "."), ""
-            );
+            String propertyKey = key.toLowerCase().replace("_", ".");
+            // Check project properties first, then system properties (-D flags)
+            String mavenProperty = project.getProperties().getProperty(propertyKey, "");
+            if (mavenProperty == null || mavenProperty.isEmpty()) {
+                mavenProperty = System.getProperty(propertyKey, "");
+            }
             if (mavenProperty != null && !mavenProperty.isEmpty()) {
                 configuration.setProperty(key, mavenProperty);
             }
@@ -114,17 +121,17 @@ public abstract class AbstractNativeBuildCachingConfiguration {
     }
 
     /**
+     * @return whether native build caching fast mode is enabled or not
+     */
+    public boolean isNativeBuildCachingFastModeEnabled() {
+        return Boolean.TRUE.toString().equals(configuration.get(DEVELOCITY_NATIVE_KEY_CACHE_FAST_MODE_ENABLED));
+    }
+
+    /**
      * @return build dir
      */
     public String getBuildDir() {
         return addTrailingSlashIfMissing(configuration.getProperty(DEVELOCITY_NATIVE_KEY_BUILD_DIR));
-    }
-
-    /**
-     * @return Maven local repository dir
-     */
-    public String getMavenLocalRepoDir() {
-        return addTrailingSlashIfMissing(configuration.getProperty(DEVELOCITY_NATIVE_KEY_MAVEN_LOCAL_REPO_DIR));
     }
 
     /**
