@@ -28,8 +28,8 @@ public final class GraalVMPluginManager extends AbstractNativeBuildPluginManager
     }
 
     @Override
-    protected AbstractNativeBuildCachingConfiguration getConfiguration(MavenProject project, String localMavenRepoDir) {
-        return new GraalVMBuildCachingConfiguration(project, localMavenRepoDir);
+    protected AbstractNativeBuildCachingConfiguration getConfiguration(MavenProject project) {
+        return new GraalVMBuildCachingConfiguration(project);
     }
 
     @Override

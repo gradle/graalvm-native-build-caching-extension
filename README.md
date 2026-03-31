@@ -209,7 +209,6 @@ Configuration can be set with (listed in order of precedence ):
 | `DEVELOCITY_NATIVE_QUARKUS_FINAL_NAME`      | Quarkus native image name                   | `project.getBuild().getFinalName()`                      |
 | `DEVELOCITY_NATIVE_EXTRA_OUTPUT_DIRS`       | Goal additional output dirs                 | `''`                                                     |
 | `DEVELOCITY_NATIVE_EXTRA_OUTPUT_FILES`      | Goal additional output files                | `''`                                                     |
-| `DEVELOCITY_NATIVE_MAVEN_LOCAL_REPO_DIR`    | Maven local repository directory            | `context.getSession().getLocalRepository().getBasedir()` |
 
 ## Fast mode
 

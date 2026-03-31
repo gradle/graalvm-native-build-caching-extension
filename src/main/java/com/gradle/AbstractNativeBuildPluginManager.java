@@ -51,7 +51,7 @@ public abstract class AbstractNativeBuildPluginManager {
 
     protected abstract List<String> getCacheableGoals();
 
-    protected abstract AbstractNativeBuildCachingConfiguration getConfiguration(MavenProject project, String localMavenRepoDir);
+    protected abstract AbstractNativeBuildCachingConfiguration getConfiguration(MavenProject project);
 
     protected abstract void configureExtraPlugins(MojoMetadataProvider.Context context, AbstractNativeBuildCachingConfiguration configuration);
 
@@ -62,7 +62,7 @@ public abstract class AbstractNativeBuildPluginManager {
     protected abstract void configurePrepareCacheOutputs(MojoMetadataProvider.Context.Outputs outputs, AbstractNativeBuildCachingConfiguration configuration);
 
     protected void configureBuildCache(BuildCacheApi buildCache, MojoMetadataProvider.Context context) {
-        AbstractNativeBuildCachingConfiguration configuration = getConfiguration(context.getProject(), context.getSession().getLocalRepository().getBasedir());
+        AbstractNativeBuildCachingConfiguration configuration = getConfiguration(context.getProject());
 
         if (configuration.isNativeBuildCachingEnabled()) {
             context.withPlugin(getPluginName(), () -> {

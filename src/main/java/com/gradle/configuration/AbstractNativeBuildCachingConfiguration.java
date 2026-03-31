@@ -23,9 +23,6 @@ public abstract class AbstractNativeBuildCachingConfiguration {
     // Build directory
     private static final String DEVELOCITY_NATIVE_KEY_BUILD_DIR = "DEVELOCITY_NATIVE_BUILD_DIR";
 
-    // Local Maven repository directory
-    private static final String DEVELOCITY_NATIVE_KEY_MAVEN_LOCAL_REPO_DIR = "DEVELOCITY_NATIVE_MAVEN_LOCAL_REPO_DIR";
-
     // Feature toggle key
     private static final String DEVELOCITY_NATIVE_KEY_CACHE_ENABLED = "DEVELOCITY_NATIVE_CACHE_ENABLED";
 
@@ -51,9 +48,9 @@ public abstract class AbstractNativeBuildCachingConfiguration {
 
     protected abstract void initPluginSpecificDefaults(MavenProject project);
 
-    protected AbstractNativeBuildCachingConfiguration(MavenProject project, String localMavenRepoDir) {
+    protected AbstractNativeBuildCachingConfiguration(MavenProject project) {
         // loading default properties
-        initWithDefaults(project, localMavenRepoDir);
+        initWithDefaults(project);
 
         // loading plugin specific default properties
         initPluginSpecificDefaults(project);
@@ -68,10 +65,9 @@ public abstract class AbstractNativeBuildCachingConfiguration {
         overrideFromConfigurationFile(project);
     }
 
-    protected void initWithDefaults(MavenProject project, String localMavenRepoDir) {
+    protected void initWithDefaults(MavenProject project) {
         configuration.setProperty(DEVELOCITY_NATIVE_KEY_BUILD_DIR, project.getBuild().getDirectory());
         configuration.setProperty(DEVELOCITY_NATIVE_KEY_CACHE_ENABLED, Boolean.TRUE.toString());
-        configuration.setProperty(DEVELOCITY_NATIVE_KEY_MAVEN_LOCAL_REPO_DIR, localMavenRepoDir);
         configuration.setProperty(DEVELOCITY_NATIVE_KEY_BUNDLE_FILE, DEVELOCITY_NATIVE_DEFAULT_NIB);
         configuration.setProperty(DEVELOCITY_NATIVE_KEY_CONFIG_FILE, "");
         configuration.setProperty(DEVELOCITY_NATIVE_KEY_CACHE_FAST_MODE_ENABLED, Boolean.FALSE.toString());

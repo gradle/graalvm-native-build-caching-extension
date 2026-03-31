@@ -37,8 +37,8 @@ public final class QuarkusPluginManager extends AbstractNativeBuildPluginManager
     }
 
     @Override
-    protected AbstractNativeBuildCachingConfiguration getConfiguration(MavenProject project, String localMavenRepoDir) {
-        return new QuarkusBuildCachingConfiguration(project, localMavenRepoDir);
+    protected AbstractNativeBuildCachingConfiguration getConfiguration(MavenProject project) {
+        return new QuarkusBuildCachingConfiguration(project);
     }
 
     @Override
