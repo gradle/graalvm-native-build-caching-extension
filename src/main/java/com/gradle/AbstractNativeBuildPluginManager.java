@@ -160,6 +160,7 @@ public abstract class AbstractNativeBuildPluginManager {
             inputs.property("osName", System.getProperty("os.name"))
                     .property("osVersion", System.getProperty("os.version"))
                     .property("osArch", System.getProperty("os.arch"));
+            inputs.property("javaVersion", System.getProperty("java.version"));
         });
     }
 

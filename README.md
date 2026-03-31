@@ -224,7 +224,7 @@ mvn clean package -Pnative -Ddevelocity.native.cache.fast.mode.enabled=true
 ```
 
 > [!NOTE]
-> Fast mode uses the compile classpath and mojo properties as cache key inputs for the bundle creation step. This is a less precise cache key than the one used for the native compilation goal (which uses the bundle contents). As a result, there is a small risk of false cache hits. This is why fast mode is disabled by default and must be explicitly opted into.
+> Fast mode uses the compile classpath, mojo properties and some host-specific information as cache key inputs for the bundle creation step. This is a less precise cache key than the one used for the native compilation goal (which uses the bundle contents). As a result, there is a small risk of false cache hits. This is why fast mode is disabled by default and must be explicitly opted into.
 
 ---
 
