@@ -28,7 +28,8 @@ Eventually, The cache node size has to be configured accordingly to make sure en
 The extension configures the inputs from the [GraalVM Native Image Bundle](https://www.graalvm.org/latest/reference-manual/native-image/overview/Bundles/) as cache key of the Maven goal performing the native compilation.
 Some transformations are applied to the bundle inputs to rely on reproducible data (sorting of entries, removal of absolute path prefixes, removal of timestamps...).
 
-The bundle is generated as a previous step of the native compilation goal, with a dry run execution. This execution is usually fast (several seconds), but this is still an overhead to consider when enabling the caching feature.
+The bundle is generated as a previous step of the native compilation goal, with a dry run execution. This execution usually takes several seconds, but this is still an overhead to consider when enabling the caching feature.
+The bundle generation can be made cacheable to optimize the process, see more details in [this section](#fast-mode). 
 
 # Supported plugins and configuration
 
@@ -190,24 +191,41 @@ Here are the files added as output:
 
 ## Additional configuration of the extension
 
-Configuration can be set with (listed in order of precedence ):
-- [Environment variables](#environment-variables)
-- [Maven properties](#maven-properties)
+Configuration can be set with (listed in order of precedence, highest first):
 - [Configuration file](#configuration-file)
+- [Maven properties](#maven-properties) (including `-D` system properties)
+- [Environment variables](#environment-variables)
 
-| Name                                      | Description                      | Default                                                  |
-|-------------------------------------------|----------------------------------|----------------------------------------------------------|
-| `DEVELOCITY_NATIVE_BUILD_DIR`             | Project build directory          | `project.getBuild().getDirectory()`                      |
-| `DEVELOCITY_NATIVE_BUNDLE_FILE`           | Native Image Bundle file name    | `bundle.nib`                                             |
-| `DEVELOCITY_NATIVE_CACHE_ENABLED`         | Feature toggle                   | `true`                                                   |
-| `DEVELOCITY_NATIVE_CONFIG_FILE`           | Extension configuration file     | `''`                                                     |
-| `DEVELOCITY_NATIVE_GRAALVM_IMAGE_NAME`    | GraalVM native image name        | `project.getArtifactId()`                                |
-| `DEVELOCITY_NATIVE_QUARKUS_BUILD_PROFILE` | Quarkus build profile            | `prod`                                                   |
-| `DEVELOCITY_NATIVE_QUARKUS_CONFIG_PREFIX` | Quarkus configuration prefix     | `quarkus`                                                |
-| `DEVELOCITY_NATIVE_QUARKUS_FINAL_NAME`    | Quarkus native image name        | `project.getBuild().getFinalName()`                      |
-| `DEVELOCITY_NATIVE_EXTRA_OUTPUT_DIRS`     | Goal additional output dirs      | `''`                                                     |
-| `DEVELOCITY_NATIVE_EXTRA_OUTPUT_FILES`    | Goal additional output files     | `''`                                                     |
-| `DEVELOCITY_NATIVE_MAVEN_LOCAL_REPO_DIR`  | Maven local repository directory | `context.getSession().getLocalRepository().getBasedir()` |
+| Name                                        | Description                                 | Default                                                  |
+|---------------------------------------------|---------------------------------------------|----------------------------------------------------------|
+| `DEVELOCITY_NATIVE_BUILD_DIR`               | Project build directory                     | `project.getBuild().getDirectory()`                      |
+| `DEVELOCITY_NATIVE_BUNDLE_FILE`             | Native Image Bundle file name               | `bundle.nib`                                             |
+| `DEVELOCITY_NATIVE_CACHE_ENABLED`           | Feature toggle                              | `true`                                                   |
+| `DEVELOCITY_NATIVE_CACHE_FAST_MODE_ENABLED` | Fast mode (caches the bundle creation step) | `false`                                                  |
+| `DEVELOCITY_NATIVE_CONFIG_FILE`             | Extension configuration file                | `''`                                                     |
+| `DEVELOCITY_NATIVE_GRAALVM_IMAGE_NAME`      | GraalVM native image name                   | `project.getArtifactId()`                                |
+| `DEVELOCITY_NATIVE_QUARKUS_BUILD_PROFILE`   | Quarkus build profile                       | `prod`                                                   |
+| `DEVELOCITY_NATIVE_QUARKUS_CONFIG_PREFIX`   | Quarkus configuration prefix                | `quarkus`                                                |
+| `DEVELOCITY_NATIVE_QUARKUS_FINAL_NAME`      | Quarkus native image name                   | `project.getBuild().getFinalName()`                      |
+| `DEVELOCITY_NATIVE_EXTRA_OUTPUT_DIRS`       | Goal additional output dirs                 | `''`                                                     |
+| `DEVELOCITY_NATIVE_EXTRA_OUTPUT_FILES`      | Goal additional output files                | `''`                                                     |
+
+## Fast mode
+
+By default, the `prepare-cache` execution (which creates the Native Image Bundle) runs on every build. This can take significant time, especially with container-based builds.
+
+When fast mode is enabled (`DEVELOCITY_NATIVE_CACHE_FAST_MODE_ENABLED`), the `prepare-cache` execution is also made cacheable. On subsequent builds with unchanged inputs, the bundle is restored from cache instead of being regenerated, skipping the bundle creation entirely.
+
+Fast mode can be enabled via a Maven property:
+
+```shell
+mvn clean package -Pnative -Ddevelocity.native.cache.fast.mode.enabled=true
+```
+
+> [!NOTE]
+> Fast mode uses the compile classpath, mojo properties and some host-specific information as cache key inputs for the bundle creation step. This is a less precise cache key than the one used for the native compilation goal (which uses the bundle contents). As a result, there is a small risk of false cache hits. This is why fast mode is disabled by default and must be explicitly opted into.
+
+---
 
 ## Troubleshooting
 Debug logging on the extension can be configured with the following property

@@ -20,8 +20,8 @@ final class QuarkusBuildCachingConfiguration extends AbstractNativeBuildCachingC
     // Default Quarkus build profile
     private static final String DEVELOCITY_NATIVE_DEFAULT_QUARKUS_BUILD_PROFILE = "prod";
 
-    QuarkusBuildCachingConfiguration(MavenProject project, String mavenLocalRepoDir) {
-        super(project, mavenLocalRepoDir);
+    QuarkusBuildCachingConfiguration(MavenProject project) {
+        super(project);
     }
 
     @Override

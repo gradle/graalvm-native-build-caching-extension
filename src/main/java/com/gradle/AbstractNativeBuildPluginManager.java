@@ -13,22 +13,19 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.FileVisitResult;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Enumeration;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Stream;
 
 /**
  * Abstract plugin manager
@@ -38,9 +35,11 @@ public abstract class AbstractNativeBuildPluginManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractNativeBuildPluginManager.class);
 
     private static final List<String> NATIVE_IMAGE_BUNDLE_DIRS_TO_COPY = Arrays.asList(
-            "/input/",
-            "/META-INF/"
+            "input/",
+            "META-INF/"
     );
+
+    private static final String PREPARE_CACHE_EXECUTION_ID = "prepare-cache";
 
     private static final AbstractNormalizer jsonNormalizer = new JsonNormalizer();
     private static final AbstractNormalizer propertiesNormalizer = new PropertiesNormalizer();
@@ -52,16 +51,18 @@ public abstract class AbstractNativeBuildPluginManager {
 
     protected abstract List<String> getCacheableGoals();
 
-    protected abstract AbstractNativeBuildCachingConfiguration getConfiguration(MavenProject project, String localMavenRepoDir);
+    protected abstract AbstractNativeBuildCachingConfiguration getConfiguration(MavenProject project);
 
     protected abstract void configureExtraPlugins(MojoMetadataProvider.Context context, AbstractNativeBuildCachingConfiguration configuration);
 
     protected abstract void configureMojoInputs(MojoMetadataProvider.Context.Inputs inputs, AbstractNativeBuildCachingConfiguration configuration);
 
-    protected abstract void configureMojoOutputs(MojoMetadataProvider.Context.Outputs outputs, AbstractNativeBuildCachingConfiguration configuration);
+    protected abstract void configureCompileOutputs(MojoMetadataProvider.Context.Outputs outputs, AbstractNativeBuildCachingConfiguration configuration);
+
+    protected abstract void configurePrepareCacheOutputs(MojoMetadataProvider.Context.Outputs outputs, AbstractNativeBuildCachingConfiguration configuration);
 
     protected void configureBuildCache(BuildCacheApi buildCache, MojoMetadataProvider.Context context) {
-        AbstractNativeBuildCachingConfiguration configuration = getConfiguration(context.getProject(), context.getSession().getLocalRepository().getBasedir());
+        AbstractNativeBuildCachingConfiguration configuration = getConfiguration(context.getProject());
 
         if (configuration.isNativeBuildCachingEnabled()) {
             context.withPlugin(getPluginName(), () -> {
@@ -77,81 +78,93 @@ public abstract class AbstractNativeBuildPluginManager {
     private void configureNativeBuildCaching(MojoMetadataProvider.Context context, AbstractNativeBuildCachingConfiguration configuration) {
         if (getCacheableGoals().contains(context.getMojoExecution().getGoal())) {
             String executionId = context.getMojoExecution().getExecutionId();
-            boolean bundleFound = processedExecutions.computeIfAbsent(executionId, key -> {
-                LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage(configuration.toString()));
-                return extractAndTransformBundle(configuration);
-            });
+            if(PREPARE_CACHE_EXECUTION_ID.equals(executionId)) {
+                // only caching prepare cache execution if fast mode is enabled
+                if(configuration.isNativeBuildCachingFastModeEnabled()) {
+                    configurePrepareCacheInputs(context, configuration);
+                    configurePrepareCacheOutputs(context, configuration);
+                }
+            } else {
+                processedExecutions.computeIfAbsent(executionId, key -> {
+                    LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage(configuration.toString()));
+                    extractBundle(configuration);
+                    transformBundle(configuration);
+                    LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Native build cache configured"));
+                    return Boolean.TRUE;
+                });
 
-            // Configure inputs/outputs when a bundle is found (required on every invocation by the Develocity API)
-            if (bundleFound) {
-                configureInputs(context, configuration);
-                configureOutputs(context, configuration);
+                configureCompileInputs(context, configuration);
+                configureCompileOutputs(context, configuration);
             }
         }
     }
 
-    private boolean extractAndTransformBundle(AbstractNativeBuildCachingConfiguration configuration) {
-        String targetDir = configuration.getBuildDir();
+    private void extractBundle(AbstractNativeBuildCachingConfiguration configuration) {
+        Path bundlePath = Paths.get(configuration.getBuildDir(), configuration.getBundleFile());
+        if (!Files.isRegularFile(bundlePath)) {
+            LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Native image bundle not found"));
+            return;
+        }
 
-        AtomicBoolean isBundleFound = new AtomicBoolean(false);
-        try (Stream<Path> walkStream = Files.walk(Paths.get(targetDir))) {
-            walkStream.filter(p -> p.toFile().isFile()).forEach(f -> {
-                if (f.toString().endsWith(configuration.getBundleFile())) {
-                    LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Found native image bundle"));
-                    isBundleFound.set(true);
+        LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Found native image bundle"));
 
-                    try (FileSystem zipFs = FileSystems.newFileSystem(f, (ClassLoader) null)) {
-                        if (zipFs != null) {
-                            for (Path rootDir : zipFs.getRootDirectories()) {
-                                Files.walkFileTree(rootDir, new SimpleFileVisitor<Path>() {
-                                    @Override
-                                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                                        Path relativePath = rootDir.relativize(file);
-                                        for (String nativeImageBundleDir : NATIVE_IMAGE_BUNDLE_DIRS_TO_COPY) {
-                                            if (file.startsWith(nativeImageBundleDir)) {
-                                                Path targetPath = Paths.get(configuration.getWorkDir()).resolve(relativePath.toString());
-                                                Files.createDirectories(targetPath.getParent());
-                                                Files.copy(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
-                                                LOGGER.trace(AbstractNativeBuildCachingConfiguration.getLogMessage("Extracted file " + file));
-                                            }
-                                        }
-                                        return FileVisitResult.CONTINUE;
-                                    }
-                                });
-                            }
-
-                            transformNativeImageBundleInputs(configuration.getWorkDir());
-                            LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Native build cache configured"));
-                        } else {
-                            LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Native image bundle is empty"));
+        try (ZipFile zipFile = new ZipFile(bundlePath.toFile())) {
+            Enumeration<? extends ZipEntry> entries = zipFile.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                if (entry.isDirectory()) {
+                    continue;
+                }
+                String name = entry.getName();
+                for (String dirToCopy : NATIVE_IMAGE_BUNDLE_DIRS_TO_COPY) {
+                    if (name.startsWith(dirToCopy)) {
+                        Path targetPath = Paths.get(configuration.getWorkDir()).resolve(name);
+                        Files.createDirectories(targetPath.getParent());
+                        try (InputStream is = zipFile.getInputStream(entry)) {
+                            Files.copy(is, targetPath, StandardCopyOption.REPLACE_EXISTING);
                         }
-                    } catch (IOException e) {
-                        LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage(e.toString()));
-                        throw new RuntimeException(e);
+                        LOGGER.trace(AbstractNativeBuildCachingConfiguration.getLogMessage("Extracted file " + name));
+                        break;
                     }
                 }
-            });
+            }
         } catch (IOException e) {
             LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage(e.toString()));
             throw new RuntimeException(e);
         }
+    }
 
-        if (!isBundleFound.get()) {
-            LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Native image bundle not found"));
+    private void transformBundle(AbstractNativeBuildCachingConfiguration configuration) {
+        LOGGER.debug(AbstractNativeBuildCachingConfiguration.getLogMessage("Transform native image bundle"));
+
+        String nativeImageBundleDir = configuration.getWorkDir();
+        if(new File(nativeImageBundleDir).exists()) {
+            jsonNormalizer.normalize(nativeImageBundleDir + "input/stage/build.json");
+            jsonNormalizer.normalize(nativeImageBundleDir + "input/stage/environment.json");
+            jsonNormalizer.normalize(nativeImageBundleDir + "input/stage/path_canonicalizations.json");
+            jsonNormalizer.normalize(nativeImageBundleDir + "input/stage/path_substitutions.json");
+            propertiesNormalizer.normalize(nativeImageBundleDir + "META-INF/nibundle.properties");
+        } else {
+            LOGGER.info(AbstractNativeBuildCachingConfiguration.getLogMessage("Extracted native image bundle not found"));
         }
-
-        return isBundleFound.get();
     }
 
-    private void transformNativeImageBundleInputs(String nativeImageBundleDir) {
-        jsonNormalizer.normalize(nativeImageBundleDir + "input/stage/build.json");
-        jsonNormalizer.normalize(nativeImageBundleDir + "input/stage/environment.json");
-        jsonNormalizer.normalize(nativeImageBundleDir + "input/stage/path_canonicalizations.json");
-        jsonNormalizer.normalize(nativeImageBundleDir + "input/stage/path_substitutions.json");
-        propertiesNormalizer.normalize(nativeImageBundleDir + "META-INF/nibundle.properties");
+    // The prepare-cache execution is cacheable only if fast mode is enabled (isNativeBuildCachingFastModeEnabled)
+    // prepare-cache inputs are environment-specific, reason why the user is added as input
+    // This optimization is a trade-off between speed and consistency. A change in the environment could be undetected and lead to a wrong cache hit.
+    private void configurePrepareCacheInputs(MojoMetadataProvider.Context context, AbstractNativeBuildCachingConfiguration configuration) {
+        configureCommonInputs(context, configuration);
+
+        context.inputs(inputs -> {
+            inputs.property("userName", System.getProperty("user.name"));
+            inputs.property("osName", System.getProperty("os.name"))
+                    .property("osVersion", System.getProperty("os.version"))
+                    .property("osArch", System.getProperty("os.arch"));
+            inputs.property("javaVersion", System.getProperty("java.version"));
+        });
     }
 
-    private void configureInputs(MojoMetadataProvider.Context context, AbstractNativeBuildCachingConfiguration configuration) {
+    private void configureCompileInputs(MojoMetadataProvider.Context context, AbstractNativeBuildCachingConfiguration configuration) {
         context.inputs(inputs -> {
             inputs.fileSet("nibManifest", new File(configuration.getWorkDir() + "META-INF/MANIFEST.MF"), fileSet -> fileSet.normalizationStrategy(MojoMetadataProvider.Context.FileSet.NormalizationStrategy.CLASSPATH));
             inputs.fileSet("nibProperties", new File(configuration.getWorkDir() + "META-INF/nibundle.properties" + AbstractNormalizer.TRANSFORMED_SUFFIX), fileSet -> fileSet.normalizationStrategy(MojoMetadataProvider.Context.FileSet.NormalizationStrategy.CLASSPATH));
@@ -159,7 +172,13 @@ public abstract class AbstractNativeBuildPluginManager {
             inputs.fileSet("nibClasses", new File(configuration.getWorkDir() + "input/classes"), fileSet -> fileSet.exclude("**/" + context.getProject().getBuild().getFinalName() + "-runner.jar").normalizationStrategy(MojoMetadataProvider.Context.FileSet.NormalizationStrategy.CLASSPATH));
             inputs.fileSet("nibStage", new File(configuration.getWorkDir() + "input/stage"), fileSet -> fileSet.exclude("**/*.json").normalizationStrategy(MojoMetadataProvider.Context.FileSet.NormalizationStrategy.RELATIVE_PATH));
             inputs.fileSet("nibStageRun", new File(configuration.getWorkDir() + "input/stage/run.json"), fileSet -> fileSet.normalizationStrategy(MojoMetadataProvider.Context.FileSet.NormalizationStrategy.RELATIVE_PATH));
+        });
 
+        configureCommonInputs(context, configuration);
+    }
+
+    private void configureCommonInputs(MojoMetadataProvider.Context context, AbstractNativeBuildCachingConfiguration configuration) {
+        context.inputs(inputs -> {
             try {
                 List<String> compileClasspathElements = context.getProject().getCompileClasspathElements();
                 inputs.fileSet("nativeBuildCachingCompileClasspath", compileClasspathElements, fileSet -> fileSet.normalizationStrategy(MojoMetadataProvider.Context.FileSet.NormalizationStrategy.CLASSPATH));
@@ -171,7 +190,14 @@ public abstract class AbstractNativeBuildPluginManager {
         });
     }
 
-    private void configureOutputs(MojoMetadataProvider.Context context, AbstractNativeBuildCachingConfiguration configuration) {
+    private void configurePrepareCacheOutputs(MojoMetadataProvider.Context context, AbstractNativeBuildCachingConfiguration configuration) {
+        context.outputs(outputs -> {
+            outputs.cacheable("this plugin has CPU-bound goals with well-defined inputs and outputs");
+            configurePrepareCacheOutputs(outputs, configuration);
+        });
+    }
+
+    private void configureCompileOutputs(MojoMetadataProvider.Context context, AbstractNativeBuildCachingConfiguration configuration) {
         context.outputs(outputs -> {
             outputs.cacheable("this plugin has CPU-bound goals with well-defined inputs and outputs");
 
@@ -189,7 +215,7 @@ public abstract class AbstractNativeBuildPluginManager {
                 }
             });
 
-            configureMojoOutputs(outputs, configuration);
+            configureCompileOutputs(outputs, configuration);
         });
     }
 

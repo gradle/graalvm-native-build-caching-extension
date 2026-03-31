@@ -8,8 +8,8 @@ final class GraalVMBuildCachingConfiguration extends AbstractNativeBuildCachingC
     // GraalVM native binary name
     private static final String DEVELOCITY_NATIVE_KEY_GRAALVM_IMAGE_NAME = "DEVELOCITY_NATIVE_GRAALVM_IMAGE_NAME";
 
-    GraalVMBuildCachingConfiguration(MavenProject project, String mavenLocalRepoDir) {
-        super(project, mavenLocalRepoDir);
+    GraalVMBuildCachingConfiguration(MavenProject project) {
+        super(project);
     }
 
     @Override

@@ -37,8 +37,8 @@ public final class QuarkusPluginManager extends AbstractNativeBuildPluginManager
     }
 
     @Override
-    protected AbstractNativeBuildCachingConfiguration getConfiguration(MavenProject project, String localMavenRepoDir) {
-        return new QuarkusBuildCachingConfiguration(project, localMavenRepoDir);
+    protected AbstractNativeBuildCachingConfiguration getConfiguration(MavenProject project) {
+        return new QuarkusBuildCachingConfiguration(project);
     }
 
     @Override
@@ -76,7 +76,16 @@ public final class QuarkusPluginManager extends AbstractNativeBuildPluginManager
     }
 
     @Override
-    protected void configureMojoOutputs(MojoMetadataProvider.Context.Outputs outputs,  AbstractNativeBuildCachingConfiguration configuration) {
+    protected void configurePrepareCacheOutputs(MojoMetadataProvider.Context.Outputs outputs, AbstractNativeBuildCachingConfiguration configuration) {
+        String bundleFile = configuration.getBuildDir() + configuration.getBundleFile();
+        String sourceJarDir = configuration.getBuildDir() + ((QuarkusBuildCachingConfiguration) configuration).getFinalName() + "-native-image-source-jar";
+
+        outputs.file("nativeImageBundle", bundleFile);
+        outputs.directory("nativeImageSourceJar", sourceJarDir);
+    }
+
+    @Override
+    protected void configureCompileOutputs(MojoMetadataProvider.Context.Outputs outputs,  AbstractNativeBuildCachingConfiguration configuration) {
         String quarkusFinalName = configuration.getBuildDir() + ((QuarkusBuildCachingConfiguration) configuration).getFinalName();
         String quarkusExeFileName = quarkusFinalName + "-runner";
         String quarkusJarFileName = quarkusFinalName + ".jar";
@@ -84,7 +93,6 @@ public final class QuarkusPluginManager extends AbstractNativeBuildPluginManager
         String quarkusFastJarDirectoryName = configuration.getBuildDir()  + "quarkus-app";
         String quarkusArtifactProperties = configuration.getBuildDir()  + QUARKUS_ARTIFACT_PROPERTIES_FILE_NAME;
 
-        outputs.cacheable("this plugin has CPU-bound goals with well-defined inputs and outputs");
         outputs.file("quarkusExe", quarkusExeFileName);
         outputs.file("quarkusJar", quarkusJarFileName);
         outputs.file("quarkusUberJar", quarkusUberJarFileName);
