@@ -191,10 +191,10 @@ Here are the files added as output:
 
 ## Additional configuration of the extension
 
-Configuration can be set with (listed in order of precedence ):
-- [Environment variables](#environment-variables)
-- [Maven properties](#maven-properties)
+Configuration can be set with (listed in order of precedence, highest first):
 - [Configuration file](#configuration-file)
+- [Maven properties](#maven-properties) (including `-D` system properties)
+- [Environment variables](#environment-variables)
 
 | Name                                        | Description                                 | Default                                                  |
 |---------------------------------------------|---------------------------------------------|----------------------------------------------------------|
