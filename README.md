@@ -40,6 +40,10 @@ The extension currently supports the following Maven plugins:
 
 The first step is to [declare the Maven extension](#extension-declaration), then configure the respective plugin as described below.
 
+You can find more advanced configuration samples in the [integration tests](https://github.com/gradle/graalvm-native-build-caching-extension/tree/main/src/it) of this project:
+- Quarkus in-container build
+- Quarkus with JIB extension
+
 ---
 
 ## Extension declaration
@@ -55,7 +59,7 @@ Reference the extension in `.mvn/extensions.xml` (this extension requires the de
     <extension>
         <groupId>com.gradle</groupId>
         <artifactId>graalvm-native-build-caching-extension</artifactId>
-        <version>0.1</version>
+        <version>0.2</version>
     </extension>
 </extensions>
 ```
