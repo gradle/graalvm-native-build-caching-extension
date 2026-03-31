@@ -142,7 +142,7 @@ public abstract class AbstractNativeBuildCachingConfiguration {
     }
 
     /**
-     * @return extra goal output directories to cache
+     * @return native image bundle file name
      */
     public String getBundleFile() {
         return configuration.getProperty(DEVELOCITY_NATIVE_KEY_BUNDLE_FILE);
