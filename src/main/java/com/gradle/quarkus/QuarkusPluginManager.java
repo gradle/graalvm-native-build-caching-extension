@@ -93,7 +93,6 @@ public final class QuarkusPluginManager extends AbstractNativeBuildPluginManager
         String quarkusFastJarDirectoryName = configuration.getBuildDir()  + "quarkus-app";
         String quarkusArtifactProperties = configuration.getBuildDir()  + QUARKUS_ARTIFACT_PROPERTIES_FILE_NAME;
 
-        outputs.cacheable("this plugin has CPU-bound goals with well-defined inputs and outputs");
         outputs.file("quarkusExe", quarkusExeFileName);
         outputs.file("quarkusJar", quarkusJarFileName);
         outputs.file("quarkusUberJar", quarkusUberJarFileName);
