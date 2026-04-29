@@ -113,6 +113,9 @@ Here are the files added as output:
 > [!NOTE]
 > Some additional outputs can be configured. See the [configuration section](#extra-outputs) for more details.
 
+> [!NOTE]
+> In IOPS-constrained environments (e.g., Podman on Windows), setting quarkus.native.remote-container-build=true may improve build performance.
+
 ---
 
 ## GraalVM Maven Plugin
