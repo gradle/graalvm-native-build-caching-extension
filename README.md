@@ -1,3 +1,7 @@
+> [!WARNING]
+> **This repository is archived and no longer maintained.**
+> The approach is not efficient enough: the extra goal execution it requires most of the time adds an overhead that potential cache hits rarely compensate.
+
 > _This repository is maintained by the Develocity Solutions team, as one of several publicly available repositories:_
 > - _[Android Cache Fix Gradle Plugin][android-cache-fix-plugin]_
 > - _[Common Custom User Data Gradle Plugin][ccud-gradle-plugin]_
